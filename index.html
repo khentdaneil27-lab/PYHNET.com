@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PYTH.NET - Flood Control Monitoring System</title>
+<title>PYNET - Flood Control Monitoring System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -151,7 +151,7 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--muted);font-s
   <div class="wrap nav">
     <a class="logo" href="#home">
       <svg class="ico" style="width:26px;height:26px" aria-hidden="true"><use href="#i-wave"/></svg>
-      <span>PYTH<b>.NET</b></span>
+      <span>PY<b>NET</b></span>
       <small>Flood Control Monitoring System</small>
     </a>
     <nav class="nav-links" aria-label="Sections">
@@ -230,20 +230,11 @@ footer{border-top:1px solid var(--line);padding:26px 0;color:var(--muted);font-s
     <h2>Alert levels and what to do</h2>
     <p class="muted">Each station reports its water level as a percentage of its full range. The thresholds below decide the alert level.</p>
     <div id="levelList"></div>
-    <details>
-      <summary>Connect your real sensors</summary>
-      <p>Stations without an address show demo data. To use an ESP32 water level sensor:</p>
-      <ol><li>Open the page’s <code>CONFIG</code> block (in the script near the bottom of this file) and set the station’s <code>endpoint</code> to the sensor’s data address:</li></ol>
-      <pre><code>{ name: "Masaba River", endpoint: "http://192.168.1.45/data" },</code></pre>
-      <ol start="2"><li>In the ESP32 sketch, inside <code>handleData()</code>, add this line so the browser is allowed to read the data:</li></ol>
-      <pre><code>server.sendHeader("Access-Control-Allow-Origin", "*");</code></pre>
-      <ol start="3"><li>Open this page from your computer or an <code>http://</code> address on the same Wi-Fi network. A page opened over <code>https://</code> cannot read an <code>http://</code> sensor.</li></ol>
-    </details>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">PYTH.NET Flood Control Monitoring System &copy; <span id="yr">2026</span>. Real-time water level monitoring dashboard.</div>
+  <div class="wrap">PYNET Flood Control Monitoring System &copy; <span id="yr">2026</span>. Real-time water level monitoring dashboard.</div>
 </footer>
 
 <script>
@@ -338,7 +329,7 @@ async function tick() {
       if (st.live) {
         v = await fetchLive(st);
         if (v === null) {
-          /* FIX: an offline sensor no longer keeps showing its last reading as if it were current */
+          /* An offline sensor must not keep showing its last reading as if it were current */
           st.level = null;
           st.history = [];
           return;
@@ -476,8 +467,15 @@ function select(id) {
   if (window.innerWidth <= 1060) detailEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+/* Stations that count toward alerts. Demo stations hold random numbers,
+   so once any real sensor is configured they are ignored here. */
+function alertStations() {
+  const hasLive = state.stations.some(s => s.live);
+  return state.stations.filter(s => s.level != null && (!hasLive || s.live));
+}
+
 function highest() {
-  const withData = state.stations.filter(s => s.level != null);
+  const withData = alertStations();
   if (!withData.length) return null;
   return withData.reduce((a, b) => (b.level > a.level ? b : a));
 }
@@ -490,7 +488,7 @@ function nameList(arr) {
 }
 
 function renderHero() {
-  const withData = state.stations.filter(s => s.level != null);
+  const withData = alertStations();
   const by = k => withData.filter(s => levelOf(s.level).key === k);
   const flood = by("flood"), high = by("high"), warn = by("warning");
   const top = highest();
@@ -500,7 +498,9 @@ function renderHero() {
   if (flood.length)      title = "Flood emergency at " + nameList(flood);
   else if (high.length)  title = "High alert at " + nameList(high);
   else if (warn.length)  title = "Warning at " + nameList(warn);
-  else if (withData.length) title = "All " + withData.length + " stations are normal";
+  else if (withData.length) title = withData.length === 1
+    ? withData[0].name + " is normal"
+    : "All " + withData.length + " stations are normal";
   else                   title = "Waiting for sensor data";
   $("#heroTitle").textContent = title;
 
@@ -526,7 +526,7 @@ function renderHero() {
   note.hidden = demo === 0;
   if (demo) {
     note.textContent = "Showing demo data for " + demo + (demo > 1 ? " stations" : " station") +
-      ". Add sensor addresses in the CONFIG block to show real readings.";
+      ". Demo stations do not affect the alert above. Add sensor addresses in the CONFIG block to show real readings.";
   }
 }
 
@@ -585,7 +585,7 @@ function renderDetail() {
     ? (tr.dir === "flat" ? tr.word : tr.word + " " + Math.abs(tr.delta).toFixed(0) + "% over the last " + tr.n + " readings")
     : tr.word;
 
-  /* FIX: set SVG geometry with attributes (style.y on an SVG rect is not reliable across browsers) */
+  /* SVG geometry is set with attributes (style.y on an SVG rect is not reliable across browsers) */
   const H = 240, h = H * (st.level || 0) / 100, fill = $("#staffFill");
   fill.setAttribute("height", h);
   fill.setAttribute("y", H - h);
